@@ -367,14 +367,20 @@ try {
     Invoke-FileDownload -Uri $biosFileUrl -Destination $biosFilePath
 
     # Verify hash if available in the catalog
-    $expectedHash = $latestBios.hashMD5
-    if (-not [string]::IsNullOrWhiteSpace($expectedHash)) {
-        $actualHash = (Get-FileHash -Path $biosFilePath -Algorithm MD5).Hash
-        if ($actualHash -ne $expectedHash) {
-            throw "Hash mismatch! Expected: $expectedHash, Got: $actualHash. The download may be corrupted."
-        }
-        Write-Log "Hash verified (MD5: $actualHash)"
-    }
+	$expectedHash = if ($latestBios.PSObject.Properties['hashMD5']) {
+		$latestBios.hashMD5
+		} elseif ($latestBios.PSObject.Properties['hashValue'] -and $latestBios.hashingAlgorithm -eq 'MD5') {
+			$latestBios.hashValue
+		} else {
+			$null
+		}
+		if (-not [string]::IsNullOrWhiteSpace($expectedHash)) {
+			$actualHash = (Get-FileHash -Path $biosFilePath -Algorithm MD5).Hash
+			if ($actualHash -ne $expectedHash) {
+				throw "Hash mismatch! Expected: $expectedHash, Got: $actualHash. The download may be corrupted."
+				}
+			Write-Log "Hash verified (MD5: $actualHash)"
+			}
     else {
         Write-Log 'No hash available in catalog, skipping verification.' -Level Warning
     }
